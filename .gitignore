@@ -1,0 +1,15 @@
+# 仮想環境
+.venv/
+
+# Pythonキャッシュ
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Playwrightキャッシュ
+.playwright/
+
+# その他
+.DS_Store
+*.log
