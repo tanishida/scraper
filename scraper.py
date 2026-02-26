@@ -16,10 +16,20 @@ async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> li
             url += f"&{query_params}"
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
-        # 商品カードが読み込まれるまで待機
-        await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
+        ## 商品カードが読み込まれるまで待機
+        # await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
 
-        items = await page.query_selector_all("li[data-testid='item-cell']")
+        # items = await page.query_selector_all("li[data-testid='item-cell']")
+        try:
+            # 30秒待機する
+            await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
+        except Exception as e:
+            # ★エラーになったら、その瞬間の画面をスクショして保存する！
+            await page.screenshot(path="error_screen.png", full_page=True)
+            print("エラー：商品が見つからなかったため、error_screen.png を保存しました。")
+            raise e # そのままエラーとして終了させる
+        
+        items = await page.locator("li[data-testid='item-cell']").all()
 
         results = []
         for item in items[:10]:
