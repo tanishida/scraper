@@ -22,7 +22,7 @@ async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> li
         items = await page.query_selector_all("li[data-testid='item-cell']")
 
         results = []
-        for item in items[:5]:
+        for item in items[:10]:
             name_el = await item.query_selector("span[data-testid='thumbnail-item-name']")
             price_el = await item.query_selector("span[class*='number']")
             img_el = await item.query_selector("img")
