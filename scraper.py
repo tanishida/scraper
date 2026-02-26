@@ -3,12 +3,23 @@ from typing import Optional
 
 async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> list[dict]:
     async with async_playwright() as p:
+        ## localhostでの開発用
         # browser = await p.chromium.launch(headless=False)
-        # ラズパイよう
-        browser = await p.chromium.launch(executable_path='/usr/bin/chromium-browser',headless=True)
+        
+        ## EC2などのサーバー用
+        browser = await p.chromium.launch(headless=True)        
         context = await browser.new_context(
-          user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080}, # 画面サイズをフルHDに偽装
+            locale="ja-JP", # 日本からのアクセスであることを強調
+            timezone_id="Asia/Tokyo" # タイムゾーンも日本に合わせる
         )
+
+        ## ラズパイよう
+        # browser = await p.chromium.launch(executable_path='/usr/bin/chromium-browser',headless=True)
+        # context = await browser.new_context(
+        #  user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        #)
         page = await context.new_page()
 
         url = f"https://jp.mercari.com/search?keyword={keyword}"
@@ -17,17 +28,8 @@ async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> li
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
         ## 商品カードが読み込まれるまで待機
-        # await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
-
-        # items = await page.query_selector_all("li[data-testid='item-cell']")
-        try:
-            # 30秒待機する
-            await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
-        except Exception as e:
-            # ★エラーになったら、その瞬間の画面をスクショして保存する！
-            await page.screenshot(path="error_screen.png", full_page=True)
-            print("エラー：商品が見つからなかったため、error_screen.png を保存しました。")
-            raise e # そのままエラーとして終了させる
+        await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
+        items = await page.query_selector_all("li[data-testid='item-cell']")
         
         items = await page.locator("li[data-testid='item-cell']").all()
 
