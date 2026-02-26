@@ -1,6 +1,7 @@
 from playwright.async_api import async_playwright
+from typing import Optional
 
-async def scrape_mercari(keyword: str) -> list[dict]:
+async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> list[dict]:
     async with async_playwright() as p:
         # browser = await p.chromium.launch(headless=False)
         # ラズパイよう
@@ -10,7 +11,9 @@ async def scrape_mercari(keyword: str) -> list[dict]:
         )
         page = await context.new_page()
 
-        url = f"https://jp.mercari.com/search?keyword={keyword}&status=sold_out&category_id=1296&item_condition_id=1%2C2&shipping_payer_id=2&sort=created_time&order=desc"
+        url = f"https://jp.mercari.com/search?keyword={keyword}"
+        if query_params:
+            url += f"&{query_params}"
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
         # 商品カードが読み込まれるまで待機
