@@ -1,0 +1,14 @@
+# ngrokのインストール（※すでにインストール済みの場合は不要です）
+curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+sudo apt update
+sudo apt install ngrok
+
+# 8000番ポート（FastAPI）を外部に公開する
+ngrok http 8000
+
+
+sudo apt update
+sudo apt install chromium-browser -y
+
+which chromium-browser
