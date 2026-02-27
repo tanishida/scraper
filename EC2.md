@@ -2,7 +2,7 @@
 
 ```bash
 # EC2 ssh接続
-ssh -i scraping.pem ubuntu@15.134.244.42
+ssh -i scraping.pem ubuntu@（ElasticIP）
 
 # （準備）作業フォルダにいることを確認
 cd ~/scraper
