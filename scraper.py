@@ -35,16 +35,11 @@ async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> li
 
         results = []
         for item in items[:10]:
-            name_el = await item.query_selector("span[data-testid='thumbnail-item-name']")
-            price_el = await item.query_selector("span[class*='number']")
-            img_el = await item.query_selector("img")
-            link_el = await item.query_selector("a")
-
-            name = await name_el.inner_text() if name_el else "不明"
-            price = await price_el.inner_text() + "円" if price_el else "不明"
-            img_url = await img_el.get_attribute("src") if img_el else "不明"
-            item_path = await link_el.get_attribute("href") if link_el else None
-            item_url = f"https://jp.mercari.com{item_path}" if item_path else "不明"
+            name = await item.locator('商品名のセレクタ').first.inner_text()
+            price = await item.locator('価格のセレクタ').first.inner_text()
+            url_path = await item.locator('a').first.get_attribute('href')
+            item_url = f"https://jp.mercari.com{url_path}" if url_path else ""
+            img_url = await item.locator('img').first.get_attribute('src')
 
             results.append({
                 "name": name,
