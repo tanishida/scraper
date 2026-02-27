@@ -43,7 +43,7 @@ async def scrape_mercari(keyword: str, query_params: Optional[str] = None) -> li
 
             results.append({
                 "name": name,
-                "price": price,
+                "price": price + "円",
                 "image_url": img_url,
                 "item_url": item_url,
             })
