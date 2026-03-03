@@ -31,7 +31,7 @@ app = FastAPI(lifespan=lifespan)
 # ==========================================
 # APIエンドポイント
 # ==========================================
-@app.get("/api/scrape")
+@app.get("/search")
 async def scrape_mercari_api(keyword: str, query_params: Optional[str] = None):
     global browser_instance
     
