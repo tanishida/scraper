@@ -47,39 +47,53 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
 # domcontentloaded（骨組みだけ）ではなく、load（全体読み込み完了）まで待ちます
         await page.goto(url, wait_until="load", timeout=60000)
         
-        # ★ 魔法の3秒待機：メルカリの裏側が「売り切れ」に画面を書き換えるラグを確実に待つ！
-        await page.wait_for_timeout(3000)
-        
+       # ★ 新規追加：URLで絞り込みが無視された時のために、Playwrightに「物理的に」売り切れボタンを押させる！
+        try:
+            # サイドバーの「売り切れ」チェックボックス（label要素）を探してクリック
+            await page.locator('label').filter(has_text="売り切れ").click(timeout=3000)
+            print("👆 画面上の「売り切れ」チェックボックスを物理的にクリックしました！")
+            # 画面が切り替わるのを待つ
+            await page.wait_for_timeout(3000)
+        except Exception:
+            print("ℹ️ チェックボックスが見つからない、または既に売り切れ状態です。そのまま進みます。")
+
+        # 商品が読み込まれるのを待つ
         await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
 
         # 3. JS側で一括処理してPythonに返す
         results = await page.evaluate('''() => {
-            const items = Array.from(document.querySelectorAll("li[data-testid='item-cell']")).slice(0, 10);
-            return items.map(item => {
+            const allItems = Array.from(document.querySelectorAll("li[data-testid='item-cell']"));
+            const validItems = [];
+
+            for (const item of allItems) {
+                // ★ 罠1の対策：「PR」という文字が含まれている広告アイテムは絶対に無視する！
+                if (item.innerText.includes("PR")) {
+                    continue;
+                }
+
                 const nameEl = item.querySelector("span[data-testid='thumbnail-item-name']");
                 
-                // ★ あなたの神デバッグを反映した完璧なセレクタ！
-                // 「merPriceクラス」の中にある「class名にnumberを含むspan」をピンポイントで狙撃
+                // 金額の取得（神デバッグで見つけた完璧なセレクタ）
                 const priceEl = item.querySelector('.merPrice span[class*="number"]');
-                
-                let priceStr = "";
-                if (priceEl) {
-                    priceStr = priceEl.innerText;
-                }
-                
-                // 数字以外の文字（カンマなど）を綺麗に消して「円」をつける
+                let priceStr = priceEl ? priceEl.innerText : "";
                 const cleanPrice = priceStr ? priceStr.replace(/[^0-9]/g, "") + "円" : "価格不明";
 
                 const linkEl = item.querySelector('a');
                 const imgEl = item.querySelector('img');
 
-                return {
+                validItems.push({
                     name: nameEl ? nameEl.innerText : "",
                     price: cleanPrice,
                     item_url: linkEl ? "https://jp.mercari.com" + linkEl.getAttribute('href') : "",
                     image_url: imgEl ? imgEl.getAttribute('src') : ""
-                };
-            });
+                });
+
+                // 綺麗なデータが10件集まったらループを終了
+                if (validItems.length >= 10) {
+                    break;
+                }
+            }
+            return validItems;
         }''')
         
         return results
