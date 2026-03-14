@@ -34,7 +34,7 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
 
         # 3. JS側で一括処理してPythonに返す
         results = await page.evaluate('''() => {
-            const items = Array.from(document.querySelectorAll("li[data-testid='item-cell']")).slice(0, {10});
+            const items = Array.from(document.querySelectorAll("li[data-testid='item-cell']")).slice(0, 10);
             return items.map(item => {
                 const nameEl = item.querySelector("span[data-testid='thumbnail-item-name']");
                 
