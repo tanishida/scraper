@@ -1,6 +1,7 @@
 # scraper.py
 from playwright.async_api import Browser
 from typing import Optional
+import urllib.parse
 
 # ★ ポイント：引数に「browser: Browser」を受け取るようにする！
 async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Optional[str] = None) -> list[dict]:
@@ -27,7 +28,15 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
         # 2. ターゲットURLの構築
         url = f"https://jp.mercari.com/search?keyword={keyword}"
         if query_params:
-            url += f"&{query_params}"
+            # iOSから送られてきた二重エンコード（%257Cなど）を、本来の「|」や「&」の姿に戻す！
+            clean_params = urllib.parse.unquote(query_params)
+            # さらに念のため、もう一度 unquote をかけると二重エンコードも完全に解除されます
+            clean_params = urllib.parse.unquote(clean_params)
+            
+            url += f"&{clean_params}"
+            
+        # ★ デバッグ用：実際にPlaywrightが開くURLをターミナルに表示して確認！
+        print(f"🌍 Playwrightが開くURL: {url}")
             
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
