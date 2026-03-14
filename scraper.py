@@ -18,12 +18,12 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
 
     try:
         # 1. 画像・CSSなどの無駄な通信を遮断
-        async def intercept_route(route):
-            if route.request.resource_type in ["image", "stylesheet", "font", "media"]:
-                await route.abort()
-            else:
-                await route.continue_()
-        await page.route("**/*", intercept_route)
+        # async def intercept_route(route):
+          #  if route.request.resource_type in ["image", "stylesheet", "font", "media"]:
+           #     await route.abort()
+            #else:
+             #   await route.continue_()
+ #       await page.route("**/*", intercept_route)
 
         # 2. ターゲットURLの構築（最強のエンコード版）
         base_url = "https://jp.mercari.com/search"
@@ -44,7 +44,12 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
             
         print(f"🌍 Playwrightが開く完璧なURL: {url}")
         
-        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+# domcontentloaded（骨組みだけ）ではなく、load（全体読み込み完了）まで待ちます
+        await page.goto(url, wait_until="load", timeout=60000)
+        
+        # ★ 魔法の3秒待機：メルカリの裏側が「売り切れ」に画面を書き換えるラグを確実に待つ！
+        await page.wait_for_timeout(3000)
+        
         await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
 
         # 3. JS側で一括処理してPythonに返す
