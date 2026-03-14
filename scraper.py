@@ -25,19 +25,25 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
                 await route.continue_()
         await page.route("**/*", intercept_route)
 
-        # 2. ターゲットURLの構築
-        url = f"https://jp.mercari.com/search?keyword={keyword}"
+        # 2. ターゲットURLの構築（最強のエンコード版）
+        base_url = "https://jp.mercari.com/search"
+        params = {"keyword": keyword}
+
         if query_params:
-            # iOSから送られてきた二重エンコード（%257Cなど）を、本来の「|」や「&」の姿に戻す！
-            clean_params = urllib.parse.unquote(query_params)
-            # さらに念のため、もう一度 unquote をかけると二重エンコードも完全に解除されます
-            clean_params = urllib.parse.unquote(clean_params)
+            # iOSからの文字列を一度完全に解凍（%257C -> | など）
+            clean_query = urllib.parse.unquote(urllib.parse.unquote(query_params))
             
-            url += f"&{clean_params}"
+            # "key=value&key2=value2" の文字列を分解して辞書に追加
+            for k, v in urllib.parse.parse_qsl(clean_query):
+                params[k] = v
+
+        # 辞書を完璧なURLエンコード文字列に再構築
+        # （quote_viaを指定することで、スペースを確実な "%20" に、| を "%7C" に変換します）
+        encoded_params = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+        url = f"{base_url}?{encoded_params}"
             
-        # ★ デバッグ用：実際にPlaywrightが開くURLをターミナルに表示して確認！
-        print(f"🌍 Playwrightが開くURL: {url}")
-            
+        print(f"🌍 Playwrightが開く完璧なURL: {url}")
+        
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
 
