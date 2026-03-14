@@ -34,16 +34,28 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
 
         # 3. JS側で一括処理してPythonに返す
         results = await page.evaluate('''() => {
-            const items = Array.from(document.querySelectorAll("li[data-testid='item-cell']")).slice(0, 10);
+            const items = Array.from(document.querySelectorAll("li[data-testid='item-cell']")).slice(0, {10});
             return items.map(item => {
                 const nameEl = item.querySelector("span[data-testid='thumbnail-item-name']");
-                const priceEl = item.querySelector("span[class*='number']");
+                
+                // ★ あなたの神デバッグを反映した完璧なセレクタ！
+                // 「merPriceクラス」の中にある「class名にnumberを含むspan」をピンポイントで狙撃
+                const priceEl = item.querySelector('.merPrice span[class*="number"]');
+                
+                let priceStr = "";
+                if (priceEl) {
+                    priceStr = priceEl.innerText;
+                }
+                
+                // 数字以外の文字（カンマなど）を綺麗に消して「円」をつける
+                const cleanPrice = priceStr ? priceStr.replace(/[^0-9]/g, "") + "円" : "価格不明";
+
                 const linkEl = item.querySelector('a');
                 const imgEl = item.querySelector('img');
 
                 return {
                     name: nameEl ? nameEl.innerText : "",
-                    price: priceEl ? priceEl.innerText + "円" : "",
+                    price: cleanPrice,
                     item_url: linkEl ? "https://jp.mercari.com" + linkEl.getAttribute('href') : "",
                     image_url: imgEl ? imgEl.getAttribute('src') : ""
                 };
