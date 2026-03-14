@@ -46,28 +46,31 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
         
 # domcontentloaded（骨組みだけ）ではなく、load（全体読み込み完了）まで待ちます
         await page.goto(url, wait_until="load", timeout=60000)
-        
-       # ★ 新規追加：URLで絞り込みが無視された時のために、Playwrightに「物理的に」売り切れボタンを押させる！
-        try:
-            # サイドバーの「売り切れ」チェックボックス（label要素）を探してクリック
-            await page.locator('label').filter(has_text="売り切れ").click(timeout=3000)
-            print("👆 画面上の「売り切れ」チェックボックスを物理的にクリックしました！")
-            # 画面が切り替わるのを待つ
-            await page.wait_for_timeout(3000)
-        except Exception:
-            print("ℹ️ チェックボックスが見つからない、または既に売り切れ状態です。そのまま進みます。")
-
         # 商品が読み込まれるのを待つ
         await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
 
+        # 3. JS側で一括処理してPythonに返す
         # 3. JS側で一括処理してPythonに返す
         results = await page.evaluate('''() => {
             const allItems = Array.from(document.querySelectorAll("li[data-testid='item-cell']"));
             const validItems = [];
 
             for (const item of allItems) {
-                // ★ 罠1の対策：「PR」という文字が含まれている広告アイテムは絶対に無視する！
+                // 🚨 罠1の対策：「PR」という文字が含まれている広告アイテムは絶対に無視！
                 if (item.innerText.includes("PR")) {
+                    continue;
+                }
+
+                // 🚨 最大の罠（ボット対策）の対策：
+                // メルカリが勝手に「販売中」を混ぜてくるなら、自力で「売り切れ」だけを判別する！
+                // 売り切れ商品には必ず「売り切れ」というテキストや、SOLDバッジのデータが含まれます。
+                const itemHTML = item.innerHTML;
+                const isSoldOut = itemHTML.includes('売り切れ') || 
+                                  itemHTML.includes('sticker="sold"') || 
+                                  itemHTML.includes('SOLD');
+                
+                // もし「売り切れ」じゃなかったら（＝販売中なら）、スキップして次を探す！
+                if (!isSoldOut) {
                     continue;
                 }
 
@@ -88,7 +91,7 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
                     image_url: imgEl ? imgEl.getAttribute('src') : ""
                 });
 
-                // 綺麗なデータが10件集まったらループを終了
+                // 「本物の売り切れデータ」が10件集まったら終了
                 if (validItems.length >= 10) {
                     break;
                 }
@@ -97,7 +100,6 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
         }''')
         
         return results
-
     finally:
         # 必ず最後にコンテキスト（タブ）を閉じる！
         await context.close()
