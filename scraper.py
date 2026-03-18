@@ -2,6 +2,7 @@
 from playwright.async_api import Browser
 from typing import Optional
 import urllib.parse
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 # ★ ポイント：引数に「browser: Browser」を受け取るようにする！
 async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Optional[str] = None) -> list[dict]:
@@ -52,13 +53,21 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
         url = f"{base_url}?{encoded_params}"
             
         print(f"🌍 Playwrightが開く完璧なURL: {url}")
-        
-# domcontentloaded（骨組みだけ）ではなく、load（全体読み込み完了）まで待ちます
+        # （URLを開いたあとの処理）
         await page.goto(url, wait_until="load", timeout=60000)
-        # 商品が読み込まれるのを待つ
-        await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
 
-        # 3. JS側で一括処理してPythonに返す
+        # ★ 修正箇所：商品が出てくるのを待つ処理を、安全なtry-exceptで囲む
+        try:
+            await page.wait_for_selector("li[data-testid='item-cell']", timeout=30000)
+        except PlaywrightTimeoutError:
+            # 30秒待っても商品が出なかった場合の緊急処理
+            print("🚨 タイムアウト発生！商品が見つかりません。現在の画面を撮影します。")
+            
+            # 原因究明のために、Playwrightが見ている画面を画像として保存！
+            await page.screenshot(path="error_screen.png", full_page=True)
+            
+            # APIをクラッシュさせず、安全に「空のリスト」をiOSに返す
+            return []
         # 3. JS側で一括処理してPythonに返す
         results = await page.evaluate('''() => {
             const allItems = Array.from(document.querySelectorAll("li[data-testid='item-cell']"));
