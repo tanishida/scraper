@@ -25,6 +25,14 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
     )
     
     page = await context.new_page()
+    await page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+            window.navigator.chrome = {
+                runtime: {},
+            };
+        """)
 
     try:
         # 1. 画像・CSSなどの無駄な通信を遮断
