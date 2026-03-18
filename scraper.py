@@ -6,12 +6,21 @@ import urllib.parse
 # ★ ポイント：引数に「browser: Browser」を受け取るようにする！
 async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Optional[str] = None) -> list[dict]:
     
-    # 受け取ったブラウザから、新しいタブ（コンテキスト）を作る
+# 受け取ったブラウザから、新しいタブ（コンテキスト）を作る
     context = await browser.new_context(
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         viewport={"width": 1920, "height": 1080},
         locale="ja-JP",
-        timezone_id="Asia/Tokyo"
+        timezone_id="Asia/Tokyo",
+        
+        geolocation={"latitude": 35.6895, "longitude": 139.6917}, # 東京の座標
+        permissions=["geolocation"],
+        extra_http_headers={
+            "Accept-Language": "ja-JP,ja;q=0.9",
+            # 日本の一般的なプロバイダ（OCNなど）のIPアドレスを「本当の送信元」として申告する
+            "X-Forwarded-For": "114.164.255.255", 
+            "X-Real-IP": "114.164.255.255"
+        }
     )
     
     page = await context.new_page()
