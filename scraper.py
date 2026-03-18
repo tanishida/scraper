@@ -76,10 +76,32 @@ async def fetch_mercari_items(browser: Browser, keyword: str, query_params: Opti
 
                 const nameEl = item.querySelector("span[data-testid='thumbnail-item-name']");
                 
-                // 金額の取得（神デバッグで見つけた完璧なセレクタ）
-                const priceEl = item.querySelector('.merPrice span[class*="number"]');
-                let priceStr = priceEl ? priceEl.innerText : "";
-                const cleanPrice = priceStr ? priceStr.replace(/[^0-9]/g, "") + "円" : "価格不明";
+                // ★ 究極の金額取得ロジック（海外通貨・小数点ブロック機能付き）
+                let cleanPrice = "価格不明";
+                const merPriceTag = item.querySelector('mer-price');
+                const merPriceClass = item.querySelector('.merPrice');
+                
+                // 1. まず、絶対に為替の影響を受けない「裏データ（value属性）」を狙う！
+                if (merPriceTag && merPriceTag.getAttribute('value')) {
+                    const rawValue = merPriceTag.getAttribute('value');
+                    cleanPrice = rawValue + "円";
+                } else {
+                    // 2. もし画面のテキストから取る場合は、海外通貨の「小数点」がないかチェック！
+                    let textPrice = "";
+                    if (merPriceClass) {
+                        textPrice = merPriceClass.innerText;
+                    } else {
+                        const match = item.innerText.match(/[0-9,\.]+/);
+                        if (match) textPrice = match[0];
+                    }
+
+                    // 「.（小数点）」が含まれていたら、それは外貨なので採用しない！
+                    if (textPrice.includes(".")) {
+                        cleanPrice = "海外通貨エラー";
+                    } else {
+                        cleanPrice = textPrice.replace(/[^0-9]/g, "") + "円";
+                    }
+                }
 
                 const linkEl = item.querySelector('a');
                 const imgEl = item.querySelector('img');
